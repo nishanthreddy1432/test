@@ -1,0 +1,151 @@
+Task 1 - To backup and restore user pool:  
+Need Jenkins Job to back the user pool
+
+
+pipeline {
+    agent any
+    
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('your-aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('your-aws-secret-access-key')
+    }
+
+    stages {
+        stage('Install AWS CLI') {
+            steps {
+                script {
+                    sh 'curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+                    sh 'unzip awscliv2.zip'
+                    sh './aws/install'
+                }
+            }
+        }
+
+        stage('Configure AWS credentials') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'your-aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'), 
+                                     string(credentialsId: 'your-aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh 'aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID'
+                        sh 'aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY'
+                    }
+                }
+            }
+        }
+
+        stage('Install npm package') {
+            steps {
+                script {
+                    sh 'npm install -g cognito-backup-restore'
+                }
+            }
+        }
+
+        stage('Create User Backup') {
+            steps {
+                script {
+                    sh 'cdr backup'
+                }
+            }
+        }
+
+        stage('Restore Users') {
+            steps {
+                script {
+                    sh 'cdr restore'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'User pool backup and restore completed successfully.'
+        }
+        failure {
+            echo 'User pool backup or restore failed. Please check the logs.'
+        }
+    }
+}
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Groovy Script 
+
+node {
+    withCredentials([string(credentialsId: 'your-aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'), 
+                     string(credentialsId: 'your-aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+
+        stage('Install AWS CLI') {
+            sh 'curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+            sh 'unzip awscliv2.zip'
+            sh './aws/install'
+        }
+
+        stage('Configure AWS credentials') {
+            sh 'aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID'
+            sh 'aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY'
+        }
+
+        stage('Install npm package') {
+            sh 'npm install -g cognito-backup-restore'
+        }
+
+        stage('Create User Backup') {
+            sh 'cdr backup'
+        }
+
+        stage('Restore Users') {
+            sh 'cdr restore'
+        }
+    }
+
+    post {
+        success {
+            echo 'User pool backup and restore completed successfully.'
+        }
+        failure {
+            echo 'User pool backup or restore failed. Please check the logs.'
+        }
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+alternative for NPM package > aws cognito-idp
+
+node {
+    withCredentials([string(credentialsId: 'your-aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'), 
+                     string(credentialsId: 'your-aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+
+        stage('Install AWS CLI') {
+            sh 'curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+            sh 'unzip awscliv2.zip'
+            sh './aws/install'
+        }
+
+        stage('Configure AWS credentials') {
+            sh 'aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID'
+            sh 'aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY'
+        }
+
+        stage('Create User Backup') {
+            sh 'aws cognito-idp create-backup --user-pool-id YOUR_USER_POOL_ID --backup-name my-backup'
+        }
+
+        stage('Restore Users') {
+            sh 'aws cognito-idp restore-from-backup --user-pool-id YOUR_USER_POOL_ID --backup-name my-backup'
+        }
+    }
+
+    post {
+        success {
+            echo 'User pool backup and restore completed successfully.'
+        }
+        failure {
+            echo 'User pool backup or restore failed. Please check the logs.'
+        }
+    }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
